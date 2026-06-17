@@ -1,12 +1,12 @@
-![header](https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=12&height=180&section=header&text=AI%20Creator%20Discovery%20Engine&fontSize=38&fontColor=ffffff&animation=fadeIn)
+![header](https://capsule-render.vercel.app/api?type=waving&color=0:ffafcc,50:fcd5ce,100:c8a2c8&height=180&section=header&text=AI%20Creator%20Discovery%20Engine&fontSize=38&fontColor=ffffff&animation=fadeIn)
 
 <p align="center">
-  <img src="https://img.shields.io/badge/n8n-EA4B71?style=for-the-badge&logo=n8n&logoColor=white" />
-  <img src="https://img.shields.io/badge/Groq-F55036?style=for-the-badge&logoColor=white" />
-  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black" />
-  <img src="https://img.shields.io/badge/Google%20Sheets-34A853?style=for-the-badge&logo=googlesheets&logoColor=white" />
-  <img src="https://img.shields.io/badge/Gmail-EA4335?style=for-the-badge&logo=gmail&logoColor=white" />
-  <img src="https://img.shields.io/badge/ScrapeCreators-1f2937?style=for-the-badge&logoColor=white" />
+  <img src="https://img.shields.io/badge/n8n-FF5C8A?style=for-the-badge&logo=n8n&logoColor=white" />
+  <img src="https://img.shields.io/badge/Groq-D94F70?style=for-the-badge&logoColor=white" />
+  <img src="https://img.shields.io/badge/JavaScript-FFB6C1?style=for-the-badge&logo=javascript&logoColor=4A154B" />
+  <img src="https://img.shields.io/badge/Google%20Sheets-C77DFF?style=for-the-badge&logo=googlesheets&logoColor=white" />
+  <img src="https://img.shields.io/badge/Gmail-FF8FAB?style=for-the-badge&logo=gmail&logoColor=white" />
+  <img src="https://img.shields.io/badge/ScrapeCreators-7B2D6E?style=for-the-badge&logoColor=white" />
 </p>
 
 <p align="center">
@@ -22,6 +22,7 @@ Submit a creator's username and platform through a form. The workflow scrapes th
 ## ⚙️ How It Works
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#ffc8dd', 'primaryBorderColor': '#c77dff', 'primaryTextColor': '#4a154b', 'lineColor': '#d94f70', 'secondaryColor': '#fcd5ce'}}}%%
 flowchart LR
     A[📝 Form Submission] --> B{Platform?}
     B -->|TikTok| C[🎵 TikTok Scraper]
@@ -109,4 +110,4 @@ The AI also flagged practical, actionable detail: best posting times landed on w
 
 ---
 
-![footer](https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=12&height=100&section=footer)
+![footer](https://capsule-render.vercel.app/api?type=waving&color=0:c8a2c8,50:fcd5ce,100:ffafcc&height=100&section=footer)
