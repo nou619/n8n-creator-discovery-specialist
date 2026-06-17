@@ -42,7 +42,7 @@ flowchart LR
 
 Fill in the creator's `username` and pick their `platform` from the dropdown — TikTok or Instagram only — then submit.
 
-![Creator submission form](screenshots/form.png)
+![Creator submission form](sc/form.png)
 
 ## 📦 Importing the Workflow
 
@@ -50,7 +50,7 @@ Fill in the creator's `username` and pick their `platform` from the dropdown —
 2. Click the **(...)** menu top-right → **Import from File** (or drag `workflow.json` straight onto a blank canvas)
 3. Connect your own credentials for: ScrapeCreators (Header Auth, `x-api-key`), Groq (Bearer Auth), Google Sheets (OAuth2), and Gmail (OAuth2)
 
-![Full workflow overview](screenshots/workflow.png)
+![Full workflow overview](sc/workflow.png)
 
 ## 🗂️ Tracking Sheet Schema
 
@@ -79,17 +79,17 @@ Every creator submitted through the form — whether or not they pass the qualit
 
 Not every scraped creator gets emailed — only ones that clear a score/priority threshold. The condition checks `score < 60 AND priority == "low"`; when that evaluates **false** (the creator is decent), the item continues to the email step. When it's **true** (genuinely low quality), it's dropped silently with no email sent.
 
-![Quality check conditions](screenshots/quality%20check.png)
+![Quality check conditions](sc/quality%20check.png)
 
 ## 📬 Example Output
 
 Here's a real run: `@elaedraws`, an Instagram art/lifestyle creator, was submitted through the form. The pipeline came back with a **Score of 70/100** and a **GROWTH BET** tier — based on 22.3K followers, a 2.74% engagement rate, and consistent (if not viral) post performance.
 
-![Sample report - score and stats](screenshots/email1.png)
+![Sample report - score and stats](sc/email1.png)
 
 The AI also flagged practical, actionable detail: best posting times landed on weekday mornings and early afternoons, and the content that performed best was workshop recaps and personal-story style posts — backed up by a post-by-post breakdown showing exactly which dates and posts drove the highest views and engagement.
 
-![Sample report - posting insights](screenshots/email2.png)
+![Sample report - posting insights](sc/email2.png)
 
 ## 🧰 Tech Stack
 
