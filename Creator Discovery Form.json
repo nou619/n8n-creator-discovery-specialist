@@ -1,0 +1,614 @@
+{
+  "name": "Creator Discovery Form",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Add Creator",
+        "formDescription": "Submit a creator to run through the discovery pipeline",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "username",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "platform",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "tiktok"
+                  },
+                  {
+                    "option": "instagram"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3ba784cd-117e-4902-ac9d-8e61c6334ded",
+      "name": "On form submission",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        240,
+        304
+      ],
+      "webhookId": "7cc97504-22f1-4a73-a06e-6f3b2e379cb0"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1cbc1d70-fbfa-435b-bb2d-6c1f5f75bff0",
+              "leftValue": "={{ $json.platform }}",
+              "rightValue": "\"tiktok\"",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        304
+      ],
+      "id": "7e59c246-808a-407a-bcba-9d518e8d5155",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.scrapecreators.com/v1/tiktok/profile?handle={{ $json.username }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        656,
+        208
+      ],
+      "id": "1d7fde2c-1592-4a61-916f-0fff54685682",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "p90haNAiPdWA2juu",
+          "name": "Bearer Auth account 4"
+        },
+        "httpHeaderAuth": {
+          "id": "oPjfnLsNgSn6cUAQ",
+          "name": "Header Auth account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.scrapecreators.com/v1/instagram/profile?handle={{ $json.username }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        656,
+        400
+      ],
+      "id": "2962fa45-f7c5-4bb6-944c-11dbc3c1af98",
+      "name": "HTTP Request1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "oPjfnLsNgSn6cUAQ",
+          "name": "Header Auth account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\n\nconst inputUsername = $('On form submission').first().json.username;\nconst inputPlatform = $('On form submission').first().json.platform;\n\nlet username, platform, followers, avg_views, total_likes,\n    total_comments, post_count, is_verified, is_business,\n    profile_link, posts_for_gemini;\n\nif (raw.user && raw.user.uniqueId) {\n  // TIKTOK\n  const u = raw.user;\n  const stats = raw.stats || raw.statsV2 || {};\n  const items = raw.itemList || [];\n  username = u.uniqueId;\n  platform = \"tiktok\";\n  followers = parseInt(stats.followerCount) || 0;\n  is_verified = u.verified || false;\n  is_business = u.commerceUserInfo?.commerceUser || false;\n  profile_link = `https://www.tiktok.com/@${username}`;\n  const last10 = items.slice(0, 10);\n  post_count = last10.length || 1;\n  total_likes = last10.reduce((s,p) => s + (p.stats?.diggCount||0), 0);\n  total_comments = last10.reduce((s,p) => s + (p.stats?.commentCount||0), 0);\n  const total_views = last10.reduce((s,p) => s + (p.stats?.playCount||0), 0);\n  avg_views = Math.round(total_views / post_count);\n  posts_for_gemini = last10.map(p => ({\n    timestamp: p.createTime,\n    date: new Date(p.createTime * 1000).toISOString().split(\"T\")[0],\n    views: p.stats?.playCount || 0,\n    likes: p.stats?.diggCount || 0,\n    comments: p.stats?.commentCount || 0,\n    shares: p.stats?.shareCount || 0,\n    caption: p.desc || \"\"\n  }));\n} else if (raw.data?.user) {\n  // INSTAGRAM\n  const u = raw.data.user;\n  const edges = u.edge_owner_to_timeline_media?.edges || [];\n  username = u.username;\n  platform = \"instagram\";\n  followers = u.edge_followed_by?.count || 0;\n  is_verified = u.is_verified || false;\n  is_business = u.is_business_account || false;\n  profile_link = `https://www.instagram.com/${username}`;\n  const last10 = edges.slice(0, 10);\n  post_count = last10.length || 1;\n  total_likes = last10.reduce((s,p) => s + (p.node.edge_liked_by?.count||0), 0);\n  total_comments = last10.reduce((s,p) => s + (p.node.edge_media_to_comment?.count||0), 0);\n  const total_views = last10.reduce((s,p) => s + (p.node.video_view_count||0), 0);\n  avg_views = Math.round(total_views / post_count);\n  posts_for_gemini = last10.map(p => ({\n    timestamp: p.node.taken_at_timestamp,\n    date: new Date((p.node.taken_at_timestamp||0)*1000).toISOString().split(\"T\")[0],\n    views: p.node.video_view_count || 0,\n    likes: p.node.edge_liked_by?.count || 0,\n    comments: p.node.edge_media_to_comment?.count || 0,\n    shares: 0,\n    caption: p.node.edge_media_to_caption?.edges?.[0]?.node?.text || \"\"\n  }));\n}\n\nconst avg_likes = Math.round(total_likes / post_count);\nconst avg_comments = Math.round(total_comments / post_count);\nconst engagement_rate = followers > 0\n  ? parseFloat(((avg_likes + avg_comments) / followers * 100).toFixed(2))\n  : 0;\n\nreturn [{\n  json: {\n    username, platform, followers, avg_views,\n    avg_likes, avg_comments, engagement_rate,\n    is_verified, is_business, profile_link,\n    posts_for_gemini,\n    last_updated: new Date().toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        304
+      ],
+      "id": "3a65d9e0-5281-4850-8dd6-9905fbc9c491",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.gemini_prompt) }} }\n  ],\n  \"temperature\": 0.65,\n  \"max_tokens\": 1200,\n  \"response_format\": { \"type\": \"json_object\" }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1312,
+        304
+      ],
+      "id": "c6ae4742-f609-45a7-972c-95e699deb1cb",
+      "name": "HTTP Request2",
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "0hTA6sJAeGqehzVB",
+          "name": "Query Auth account"
+        },
+        "httpBearerAuth": {
+          "id": "BfQ9IGzgL83TIH1s",
+          "name": "Bearer Auth account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst platformContext = d.platform === \"tiktok\"\n  ? `TIKTOK SCORING CONTEXT:\n- Views are the PRIMARY signal, not followers or engagement rate\n- A single viral video (10x+ average views) defines account quality\n- Engagement rate is naturally unstable on TikTok — do NOT penalize for this\n- Follower count is almost meaningless\n- Shares are a strong virality signal\n- View spikes = algorithm pickup signal`\n  : `INSTAGRAM SCORING CONTEXT:\n- Engagement rate is the PRIMARY signal (above 3% = strong, below 1% = red flag)\n- Comments carry more weight than likes\n- Niche consistency across posts matters\n- Large following + low engagement = bought/dead audience\n- One viral post means less than CONSISTENT performance`;\n\nconst prompt = `You are an influencer scouting analyst. Analyze this creator and respond with ONLY valid JSON (no markdown, no commentary).\n\nCREATOR DATA:\nUsername: ${d.username}\nPlatform: ${d.platform}\nFollowers: ${d.followers}\nAvg Views (last 10 posts): ${d.avg_views}\nAvg Likes: ${d.avg_likes}\nAvg Comments: ${d.avg_comments}\nEngagement Rate: ${d.engagement_rate}%\nVerified: ${d.is_verified}\nBusiness Account: ${d.is_business}\n\n${platformContext}\n\nRECENT POSTS:\n${JSON.stringify(d.posts_for_gemini)}\n\nRespond with ONLY this JSON:\n{\n  \"category\": \"beauty|tech|finance|fitness|food|fashion|gaming|education|comedy|travel|lifestyle|other\",\n  \"strategic_tier\": \"SAFE BET\" | \"GROWTH BET\" | \"EXPERIMENTAL/VIRAL BET\",\n  \"score\": 0-100,\n  \"outreach_priority\": \"low\" | \"medium\" | \"high\",\n  \"reasoning\": \"3-5 sentences, direct, references actual data\",\n  \"timing_insight\": \"1-2 sentences on best posting days/times\",\n  \"content_trend\": \"1-2 sentences on what content performs best\",\n  \"engagement_verdict\": \"real\" | \"suspicious\" | \"mixed\",\n  \"growth_signal\": \"growing\" | \"stable\" | \"declining\",\n  \"post_breakdown\": [{\"date\":\"YYYY-MM-DD\",\"views\":number,\"likes\":number,\"comments\":number,\"performance\":\"high\"|\"average\"|\"low\"}]\n}`;\n\nreturn [{ json: { ...d, gemini_prompt: prompt } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        304
+      ],
+      "id": "3c787a9c-46ee-467d-9113-e69a32778aff",
+      "name": "Build Gemini Prompt"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1ULO4ncfD4RIvfZZAtyjRssm0fdHuv1Ql7io8u2tNAJk",
+          "mode": "list",
+          "cachedResultName": "creators",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ULO4ncfD4RIvfZZAtyjRssm0fdHuv1Ql7io8u2tNAJk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1ULO4ncfD4RIvfZZAtyjRssm0fdHuv1Ql7io8u2tNAJk/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "username": "={{ $json.reportData.username }}",
+            "platform": "={{ $json.reportData.platform }}",
+            "followers": "={{ $json.reportData.followers }}",
+            "avg_views": "={{ $json.reportData.avg_views }}",
+            "avg_likes": "={{ $json.reportData.avg_likes }}",
+            "avg_comments": "={{ $json.reportData.avg_comments }}",
+            "engagement_rate": "={{ $json.reportData.engagement_rate }}",
+            "is_verified": "={{ $json.reportData.is_verified }}",
+            "is_business": "={{ $json.reportData.is_business }}",
+            "category": "={{ $json.reportData.category }}",
+            "strategic_tier": "={{ $json.reportData.strategic_tier }}",
+            "score": "={{ $json.reportData.score }}",
+            "outreach_priority": "={{ $json.reportData.outreach_priority }}",
+            "contacted": "={{ $json.reportData.contacted }}",
+            "profile_link": "={{ $json.reportData.profile_link }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "username",
+              "displayName": "username",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "platform",
+              "displayName": "platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "followers",
+              "displayName": "followers",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "avg_views",
+              "displayName": "avg_views",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "avg_likes",
+              "displayName": "avg_likes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "avg_comments",
+              "displayName": "avg_comments",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "engagement_rate",
+              "displayName": "engagement_rate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "is_verified",
+              "displayName": "is_verified",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "is_business",
+              "displayName": "is_business",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "strategic_tier",
+              "displayName": "strategic_tier",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "outreach_priority",
+              "displayName": "outreach_priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "contacted",
+              "displayName": "contacted",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "profile_link",
+              "displayName": "profile_link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_updated",
+              "displayName": "last_updated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1712,
+        256
+      ],
+      "id": "362f7b4e-784a-489b-b1fb-97c861ddfbfd",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "rindKQaXd8ouqihb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "93bdf544-34dd-4bcf-9e3d-9e141131a839",
+              "leftValue": "={{ $json.reportData.score }}",
+              "rightValue": 60,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            },
+            {
+              "id": "77b9601a-d27c-464d-b9dd-f9856aacf5c6",
+              "leftValue": "={{ $json.reportData.outreach_priority }}",
+              "rightValue": "\"low\"",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1728,
+        480
+      ],
+      "id": "887f84ba-7668-4b22-bb93-05a6aee19d66",
+      "name": "Quality Check"
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json.reportData;\n\nconst tierColors = {\n  \"SAFE BET\": { bg: \"#dcfce7\", text: \"#166534\", emoji: \"🛡️\" },\n  \"GROWTH BET\": { bg: \"#fef3c7\", text: \"#92400e\", emoji: \"🚀\" },\n  \"EXPERIMENTAL/VIRAL BET\": { bg: \"#fee2e2\", text: \"#991b1b\", emoji: \"⚡\" }\n};\nconst tier = tierColors[d.strategic_tier] || tierColors[\"SAFE BET\"];\nconst scoreColor = d.score >= 80 ? \"#16a34a\" : d.score >= 60 ? \"#d97706\" : \"#dc2626\";\n\nconst postsRows = (d.post_breakdown || []).map(p => `\n  <tr>\n    <td style=\"padding:8px;border-bottom:1px solid #eee;\">${p.date}</td>\n    <td style=\"padding:8px;border-bottom:1px solid #eee;\">${p.views}</td>\n    <td style=\"padding:8px;border-bottom:1px solid #eee;\">${p.likes}</td>\n    <td style=\"padding:8px;border-bottom:1px solid #eee;\">${p.comments}</td>\n    <td style=\"padding:8px;border-bottom:1px solid #eee;\">${p.performance}</td>\n  </tr>`).join(\"\");\n\nconst html = `\n<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;\">\n  <h2>@${d.username} <span style=\"background:${tier.bg};color:${tier.text};padding:4px 10px;border-radius:6px;font-size:14px;\">${tier.emoji} ${d.strategic_tier}</span></h2>\n  <p style=\"font-size:36px;font-weight:bold;color:${scoreColor};margin:0;\">${d.score}/100</p>\n  <p>Platform: ${d.platform} · Category: ${d.category}</p>\n  <table style=\"width:100%;text-align:center;margin:16px 0;\">\n    <tr>\n      <td><b>${d.followers}</b><br/>Followers</td>\n      <td><b>${d.avg_views}</b><br/>Avg Views</td>\n      <td><b>${d.avg_likes}</b><br/>Avg Likes</td>\n      <td><b>${d.avg_comments}</b><br/>Avg Comments</td>\n      <td><b>${d.engagement_rate}%</b><br/>Engagement</td>\n    </tr>\n  </table>\n  <p>Verified: ${d.is_verified ? \"Yes\" : \"No\"} · Engagement: ${d.engagement_verdict} · Growth: ${d.growth_signal}</p>\n  <div style=\"border-left:4px solid #5B5FEF;padding:10px 16px;background:#f5f5ff;margin:16px 0;\">${d.reasoning}</div>\n  <p><b>Best posting times:</b> ${d.timing_insight}</p>\n  <p><b>Content that works:</b> ${d.content_trend}</p>\n  <table style=\"width:100%;border-collapse:collapse;margin-top:16px;\">\n    <tr style=\"background:#f3f4f6;\">\n      <th style=\"padding:8px;text-align:left;\">Date</th>\n      <th style=\"padding:8px;text-align:left;\">Views</th>\n      <th style=\"padding:8px;text-align:left;\">Likes</th>\n      <th style=\"padding:8px;text-align:left;\">Comments</th>\n      <th style=\"padding:8px;text-align:left;\">Performance</th>\n    </tr>\n    ${postsRows}\n  </table>\n  <p style=\"margin-top:20px;\"><a href=\"${d.profile_link}\">View Profile →</a></p>\n</div>`;\n\nreturn [{ json: { ...$input.first().json, html } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1984,
+        496
+      ],
+      "id": "c8ffc39c-6a8d-430c-bfdf-e9beff3a1380",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "sendTo": "nourbenhnia619@gmail.com",
+        "subject": "=🔥 @{{ $json.reportData.username }} — Score {{ $json.reportData.score }}/100 · {{ $json.reportData.strategic_tier }}",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2176,
+        496
+      ],
+      "id": "f51cddab-5f40-4c04-bc67-8bbd42234c3a",
+      "name": "Send Report Emai",
+      "webhookId": "23cb8777-2942-4401-b00c-25d759112c49",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jtO3VQA09p3fktth",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const groqResp = $input.first().json;\nconst base = $('Build Gemini Prompt').first().json;\n\nconst raw = groqResp.choices?.[0]?.message?.content || \"{}\";\nlet ai = {};\ntry {\n  ai = JSON.parse(raw.replace(/```json|```/g, \"\").trim());\n} catch(e) {\n  ai = {\n    category: \"unknown\", strategic_tier: \"SAFE BET\", score: 0,\n    outreach_priority: \"low\", reasoning: \"AI parse failed — review manually.\",\n    timing_insight: \"N/A\", content_trend: \"N/A\",\n    engagement_verdict: \"mixed\", growth_signal: \"stable\", post_breakdown: []\n  };\n}\n\nconst sheetRow = {\n  username: base.username, platform: base.platform, followers: base.followers,\n  avg_views: base.avg_views, engagement_rate: base.engagement_rate,\n  is_verified: base.is_verified, is_business: base.is_business,\n  category: ai.category || \"unknown\",\n  strategic_tier: ai.strategic_tier || \"SAFE BET\",\n  score: ai.score || 0,\n  outreach_priority: ai.outreach_priority || \"low\",\n  contacted: \"No\",\n  profile_link: base.profile_link,\n  last_updated: base.last_updated\n};\n\nconst reportData = {\n  ...sheetRow,\n  avg_likes: base.avg_likes, avg_comments: base.avg_comments,\n  reasoning: ai.reasoning || \"\",\n  timing_insight: ai.timing_insight || \"\",\n  content_trend: ai.content_trend || \"\",\n  engagement_verdict: ai.engagement_verdict || \"mixed\",\n  growth_signal: ai.growth_signal || \"stable\",\n  post_breakdown: ai.post_breakdown || []\n};\n\nreturn [{ json: { sheetRow, reportData } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        304
+      ],
+      "id": "b29a8fcd-fa1a-49d9-8423-b2514bc52a2e",
+      "name": "Code in JavaScript2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Build Gemini Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Gemini Prompt": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quality Check": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Send Report Emai",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Quality Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "99b69305-92ba-4063-ab8f-6dff8932f3df",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a3a65593682aaf38a2a893586ef37446e59d56114b56294ea58e3720f5f8738d"
+  },
+  "nodeGroups": [],
+  "id": "0CM7jxwT8TvsoKYs",
+  "tags": []
+}
